@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import json
-import os
+import subprocess
 import sys
 import threading
 import urllib.request
@@ -23,9 +23,11 @@ TIMEOUT = 5
 
 
 def _api(url: str) -> Optional[dict]:
+    if not url.startswith("https://"):
+        return None
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "yt-harvest"})
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # noqa: S310
             return json.loads(r.read().decode("utf-8"))
     except Exception:
         return None
@@ -77,16 +79,20 @@ def check_and_update(log: Callable[[str], None] = print) -> None:
             log(f"⚠ 새 버전 {ver} 있음 (수동 다운로드: {release.get('html_url','')})")
             return
 
-        # 다운로드
+        # 다운로드 (https만 허용)
+        dl_url = asset["browser_download_url"]
+        if not dl_url.startswith("https://"):
+            log("⚠ 안전하지 않은 다운로드 URL — 스킵")
+            return
         log(f"↓ 새 버전 {ver} 다운로드 중...")
         exe_dir = Path(sys.executable).parent
         new_path = exe_dir / "YtHarvest_new.exe"
         try:
-            urllib.request.urlretrieve(asset["browser_download_url"], new_path)
+            urllib.request.urlretrieve(dl_url, new_path)  # noqa: S310
         except Exception as e:
             log(f"⚠ 다운로드 실패: {e}")
             return
-        log(f"✓ 새 버전 받음. 다음 실행 시 적용됨.")
+        log("✓ 새 버전 받음. 다음 실행 시 적용됨.")
         # updater.bat은 종료 시 또는 다음 실행 시 호출됨
 
     threading.Thread(target=_work, daemon=True).start()
@@ -108,6 +114,12 @@ def swap_on_startup() -> None:
     bat = exe_dir / "updater.bat"
     if not bat.exists():
         return
-    # 비동기로 bat 실행 후 이번 프로세스 종료
-    os.system(f'start "" /B "{bat}"')
+    # 비동기로 bat 실행 후 이번 프로세스 종료 (shell injection 방지 위해 list 형태)
+    try:
+        DETACHED = 0x00000008  # subprocess.DETACHED_PROCESS (win32only)
+        subprocess.Popen(
+            [str(bat)], shell=False, cwd=str(bat.parent), creationflags=DETACHED
+        )
+    except Exception:
+        return  # 실패하면 그냥 현재 버전 계속 실행
     sys.exit(0)

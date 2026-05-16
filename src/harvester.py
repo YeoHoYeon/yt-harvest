@@ -1,7 +1,6 @@
 """영상 1개 처리 파이프라인: 메타 → 자막 → 댓글."""
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -33,7 +32,7 @@ def process_video(
             pass  # 손상됐으면 다시 받음
 
     # 1. 메타
-    log(f"  · 메타 받는 중...")
+    log("  · 메타 받는 중...")
     raw_meta = meta.fetch_video_meta(video_id)
     if "_error" in raw_meta:
         log(f"  ⚠ 메타 실패: {raw_meta['_error']}")
@@ -42,13 +41,13 @@ def process_video(
     exporter.write_meta(vdir, slim)
 
     # 2. 자막
-    log(f"  · 자막 받는 중...")
+    log("  · 자막 받는 중...")
     text, source = subtitle.fetch(video_id, vdir)
     exporter.write_transcript(vdir, text, source)
     log(f"  · 자막 {len(text):,}자 ({source})")
 
     # 3. 댓글
-    log(f"  · 댓글 받는 중...")
+    log("  · 댓글 받는 중...")
     cms = comments.fetch_all(video_id)
     main_n, reply_n = comments.stats(cms)
     exporter.write_comments(vdir, cms)

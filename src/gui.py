@@ -11,7 +11,7 @@ from tkinter import messagebox
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import BOTH, DISABLED, END, LEFT, NORMAL, RIGHT, X, Y
 
-from . import __version__, config, notify, runner, updater
+from . import config, notify, runner, updater
 
 
 LIMIT_CHOICES = ["전체", "100", "50", "20", "10", "5"]
@@ -20,7 +20,7 @@ LIMIT_CHOICES = ["전체", "100", "50", "20", "10", "5"]
 class App:
     def __init__(self) -> None:
         updater.swap_on_startup()
-        self.root = ttk.Window(themename="darkly", title=f"yt-harvest")
+        self.root = ttk.Window(themename="darkly", title="yt-harvest")
         self.root.geometry("520x500")
         self.root.minsize(480, 460)
 

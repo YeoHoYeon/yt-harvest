@@ -46,7 +46,7 @@ def run(
             raise ValueError(f"video id 추출 실패: {target.canonical}")
         video_list = [{"id": m.group(1), "title": "", "duration": None}]
     else:
-        log(f"[채널] 영상 리스트 받는 중...")
+        log("[채널] 영상 리스트 받는 중...")
         video_list = meta.list_videos(target.canonical, limit=limit)
         log(f"[채널] {len(video_list)}개 영상")
 

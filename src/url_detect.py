@@ -15,16 +15,17 @@ class TargetURL:
     canonical: str  # yt-dlp가 먹는 형태
 
 
+_HOST = r"(?:www\.|m\.)?youtube\.com"
 _VIDEO_PATTERNS = [
-    re.compile(r"^https?://(?:www\.)?youtube\.com/watch\?v=([A-Za-z0-9_-]{11})"),
+    re.compile(rf"^https?://{_HOST}/watch\?v=([A-Za-z0-9_-]{{11}})"),
     re.compile(r"^https?://youtu\.be/([A-Za-z0-9_-]{11})"),
-    re.compile(r"^https?://(?:www\.)?youtube\.com/shorts/([A-Za-z0-9_-]{11})"),
+    re.compile(rf"^https?://{_HOST}/shorts/([A-Za-z0-9_-]{{11}})"),
 ]
 _CHANNEL_SHORTS = re.compile(
-    r"^(https?://(?:www\.)?youtube\.com/(?:@[^/?\s]+|channel/UC[A-Za-z0-9_-]+))/shorts/?"
+    rf"^(https?://{_HOST}/(?:@[^/?\s]+|channel/UC[A-Za-z0-9_-]+))/shorts/?"
 )
 _CHANNEL_BASE = re.compile(
-    r"^(https?://(?:www\.)?youtube\.com/(?:@[^/?\s]+|channel/UC[A-Za-z0-9_-]+))"
+    rf"^(https?://{_HOST}/(?:@[^/?\s]+|channel/UC[A-Za-z0-9_-]+))"
 )
 _PLAYLIST = re.compile(r"[?&]list=([A-Za-z0-9_-]+)")
 

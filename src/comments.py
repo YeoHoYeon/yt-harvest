@@ -1,7 +1,6 @@
 """youtube-comment-downloader로 댓글+답글 전체 받기."""
 from __future__ import annotations
 
-from typing import Iterator
 
 from youtube_comment_downloader import SORT_BY_POPULAR, YoutubeCommentDownloader
 

@@ -1,11 +1,9 @@
 """yt-dlp로 한국어 자막 다운로드 + vtt → plain text."""
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 _VTT_TAG_RE = re.compile(r"<[^>]+>")
