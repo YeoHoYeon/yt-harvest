@@ -1,18 +1,28 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec for YtHarvest
+import os
+import sys
+from pathlib import Path
 
 block_cipher = None
+
+# yt-dlp.exe를 venv에서 찾아서 동봉
+_venv_scripts = Path('.venv') / ('Scripts' if sys.platform == 'win32' else 'bin')
+_ytdlp_exe = _venv_scripts / ('yt-dlp.exe' if sys.platform == 'win32' else 'yt-dlp')
+_datas = []
+if _ytdlp_exe.exists():
+    _datas.append((str(_ytdlp_exe), '.'))
 
 a = Analysis(
     ['yt_harvest_entry.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=_datas,
     hiddenimports=[
         'ttkbootstrap',
         'youtube_comment_downloader',
         'yt_dlp',
-        'winotify',  # Windows 한정 — 맥 빌드 시 noop
+        'winotify',
     ],
     hookspath=[],
     runtime_hooks=[],
@@ -37,7 +47,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,         # GUI 앱이라 콘솔 안 띄움
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
