@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import random
 import time
+import traceback
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -22,6 +23,45 @@ def run(
     limit: Optional[int] = None,
     log: Callable[[str], None] = print,
     should_stop: Callable[[], bool] = lambda: False,
+) -> Path:
+    # 로그 파일 (output_root/logs/ 아래에 실행 시각별로)
+    output_root.mkdir(parents=True, exist_ok=True)
+    logs_dir = output_root / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / f"{dt.datetime.now():%Y-%m-%d_%H-%M-%S}.log"
+    log_fh = open(log_path, "a", encoding="utf-8")
+
+    def tee(msg: str) -> None:
+        log(msg)
+        ts = dt.datetime.now().strftime("%H:%M:%S")
+        try:
+            log_fh.write(f"{ts}  {msg}\n")
+            log_fh.flush()
+        except Exception:
+            pass
+
+    tee(f"[시작] {url}")
+    tee(f"[로그파일] {log_path}")
+
+    try:
+        return _run_inner(url, output_root, limit, tee, should_stop)
+    except Exception as e:
+        tee(f"[치명 에러] {e}")
+        tee(traceback.format_exc())
+        raise
+    finally:
+        try:
+            log_fh.close()
+        except Exception:
+            pass
+
+
+def _run_inner(
+    url: str,
+    output_root: Path,
+    limit: Optional[int],
+    log: Callable[[str], None],
+    should_stop: Callable[[], bool],
 ) -> Path:
     target = url_detect.detect(url)
     log(f"[모드] {target.mode}")
