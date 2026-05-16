@@ -116,9 +116,10 @@ def swap_on_startup() -> None:
         return
     # 비동기로 bat 실행 후 이번 프로세스 종료 (shell injection 방지 위해 list 형태)
     try:
-        DETACHED = 0x00000008  # subprocess.DETACHED_PROCESS (win32only)
+        # DETACHED_PROCESS + CREATE_NO_WINDOW (cmd 창 안 띄움)
+        FLAGS = 0x00000008 | 0x08000000
         subprocess.Popen(
-            [str(bat)], shell=False, cwd=str(bat.parent), creationflags=DETACHED
+            [str(bat)], shell=False, cwd=str(bat.parent), creationflags=FLAGS
         )
     except Exception:
         return  # 실패하면 그냥 현재 버전 계속 실행

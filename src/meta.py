@@ -5,13 +5,15 @@ from typing import Optional
 
 from yt_dlp import YoutubeDL
 
+from .subtitle import _SilentLogger
+
 
 def fetch_video_meta(video_id: str) -> dict:
     """영상 1개의 모든 메타."""
     url = f"https://www.youtube.com/watch?v={video_id}"
     try:
         with YoutubeDL(
-            {"quiet": True, "no_warnings": True, "skip_download": True}
+            {"quiet": True, "no_warnings": True, "skip_download": True, "noprogress": True, "logger": _SilentLogger()}
         ) as ydl:
             return ydl.extract_info(url, download=False) or {"_error": "empty"}
     except Exception as e:

@@ -7,6 +7,15 @@ from pathlib import Path
 from yt_dlp import YoutubeDL
 
 
+class _SilentLogger:
+    """yt_dlp 콘솔 출력 완전 차단 (frozen exe에서 cmd 창 뜨는 거 방지)."""
+
+    def debug(self, msg: str) -> None: pass
+    def info(self, msg: str) -> None: pass
+    def warning(self, msg: str) -> None: pass
+    def error(self, msg: str) -> None: pass
+
+
 _VTT_TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -41,6 +50,8 @@ def fetch(video_id: str, out_dir: Path) -> tuple[str, str]:
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
+        "noprogress": True,
+        "logger": _SilentLogger(),
     }
     try:
         with YoutubeDL(opts) as ydl:
