@@ -12,24 +12,33 @@ def process_video(
     root: Path,
     log: Callable[[str], None] = print,
     skip_if_exists: bool = True,
+    title: Optional[str] = None,
+    index: Optional[int] = None,
 ) -> dict:
     """영상 1개 처리. 결과 한 줄 dict 반환 (_stats.csv 행)."""
-    vdir = exporter.video_dir(root, video_id)
-
-    # Resume: 이미 처리된 영상이면 skip
-    done_marker = vdir / "meta.json"
-    if skip_if_exists and done_marker.exists() and (vdir / "comments.json").exists():
+    # Resume: 같은 video_id 폴더 있으면 재사용
+    existing = exporter.find_video_dir(root, video_id)
+    if existing and skip_if_exists and (existing / "정보.json").exists() and (existing / "댓글.json").exists():
         log(f"  ⏭  {video_id} 이미 받음 → skip")
         # 기존 메타에서 stats row 복원
         try:
             import json
 
-            m = json.loads(done_marker.read_text(encoding="utf-8"))
+            m = json.loads((existing / "정보.json").read_text(encoding="utf-8"))
             v = m.get("video", {})
-            src = (vdir / "transcript_source.txt").read_text(encoding="utf-8").strip() if (vdir / "transcript_source.txt").exists() else ""
-            return _row_from_meta(v, src, vdir)
+            # 자막 종류는 파일명에서 추론
+            if (existing / "대본_사람단자막.txt").exists():
+                src = "human"
+            elif (existing / "대본_자동자막.txt").exists():
+                src = "auto"
+            else:
+                src = "none"
+            return _row_from_meta(v, src, existing)
         except Exception:
             pass  # 손상됐으면 다시 받음
+
+    # 새로 받기 — 폴더는 메타 받은 후 제목 기반으로 생성
+    vdir = exporter.video_dir(root, video_id, title=title, index=index)
 
     # 1. 메타
     log("  · 메타 받는 중...")
@@ -40,11 +49,12 @@ def process_video(
     slim = meta.slim_video_meta(raw_meta)
     exporter.write_meta(vdir, slim)
 
-    # 2. 자막
+    # 2. 자막 (raw_meta 재사용해서 extract_info 두 번 안 부름)
     log("  · 자막 받는 중...")
-    text, source = subtitle.fetch(video_id, vdir)
+    text, source = subtitle.fetch(video_id, vdir, info=raw_meta)
     exporter.write_transcript(vdir, text, source)
-    log(f"  · 자막 {len(text):,}자 ({source})")
+    label = {"human": "사람단자막", "auto": "자동자막", "none": "없음"}[source]
+    log(f"  · 자막 {len(text):,}자 ({label})")
 
     # 3. 댓글
     log("  · 댓글 받는 중...")

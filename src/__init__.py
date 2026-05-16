@@ -1,4 +1,4 @@
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 # PyInstaller frozen 환경: 동봉된 yt-dlp.exe / ffmpeg.exe를 subprocess가 찾도록 PATH 등록
 import os as _os

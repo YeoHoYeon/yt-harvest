@@ -1,15 +1,20 @@
-"""yt-dlp Python API로 한국어 자막 다운로드 + vtt → plain text."""
+"""yt-dlp Python API로 한국어 자막 다운로드 + vtt → plain text.
+
+정확한 구분:
+- "human" = 영상 주인이 직접 단 자막 (info['subtitles']['ko*'])
+- "auto"  = 유튜브 자동 STT (info['automatic_captions']['ko*'])
+- "none"  = 둘 다 없음
+"""
 from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Optional
 
 from yt_dlp import YoutubeDL
 
 
 class _SilentLogger:
-    """yt_dlp 콘솔 출력 완전 차단 (frozen exe에서 cmd 창 뜨는 거 방지)."""
-
     def debug(self, msg: str) -> None: pass
     def info(self, msg: str) -> None: pass
     def warning(self, msg: str) -> None: pass
@@ -37,15 +42,52 @@ def _parse_vtt(vtt_path: Path) -> str:
     return "\n".join(out)
 
 
-def fetch(video_id: str, out_dir: Path) -> tuple[str, str]:
-    """자막 받기. 반환: (transcript_text, source: "ko"/"ko-orig"/"none")."""
+def _find_ko(d: dict) -> Optional[str]:
+    """ko, ko-KR, ko-Hang 등 한국어 자막 코드 찾기."""
+    for k in d:
+        if k.startswith("ko"):
+            return k
+    return None
+
+
+def fetch(
+    video_id: str, out_dir: Path, info: Optional[dict] = None
+) -> tuple[str, str]:
+    """자막 받기. 반환: (transcript_text, source: "human"/"auto"/"none")."""
     out_dir.mkdir(parents=True, exist_ok=True)
     url = f"https://www.youtube.com/watch?v={video_id}"
+
+    # info 없으면 새로 받음 (meta.fetch_video_meta 호출 안 한 경우)
+    if info is None:
+        try:
+            with YoutubeDL(
+                {
+                    "skip_download": True,
+                    "quiet": True,
+                    "no_warnings": True,
+                    "noprogress": True,
+                    "logger": _SilentLogger(),
+                }
+            ) as ydl:
+                info = ydl.extract_info(url, download=False) or {}
+        except Exception:
+            info = {}
+
+    human_lang = _find_ko(info.get("subtitles") or {})
+    auto_lang = _find_ko(info.get("automatic_captions") or {})
+
+    if not human_lang and not auto_lang:
+        return "", "none"
+
+    # 사람 자막 우선, 없으면 자동
+    use_human = bool(human_lang)
+    lang = human_lang or auto_lang
+
     opts = {
         "skip_download": True,
-        "writesubtitles": True,
-        "writeautomaticsub": True,
-        "subtitleslangs": ["ko", "ko-orig"],
+        "writesubtitles": use_human,
+        "writeautomaticsub": not use_human,
+        "subtitleslangs": [lang],
         "subtitlesformat": "vtt",
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
         "quiet": True,
@@ -53,24 +95,18 @@ def fetch(video_id: str, out_dir: Path) -> tuple[str, str]:
         "noprogress": True,
         "logger": _SilentLogger(),
     }
+
     try:
         with YoutubeDL(opts) as ydl:
             ydl.download([url])
     except Exception:
-        pass  # 자막 없을 수 있음
+        return "", "none"
 
-    ko_human = out_dir / f"{video_id}.ko.vtt"
-    ko_auto = out_dir / f"{video_id}.ko-orig.vtt"
-
+    # 다운로드된 vtt 찾기
     text = ""
-    source = "none"
-    if ko_human.exists():
-        text, source = _parse_vtt(ko_human), "ko"
-    elif ko_auto.exists():
-        text, source = _parse_vtt(ko_auto), "ko-orig"
+    for f in out_dir.glob(f"{video_id}*.vtt"):
+        text = _parse_vtt(f)
+        f.unlink(missing_ok=True)
+        break
 
-    for v in (ko_human, ko_auto):
-        if v.exists():
-            v.unlink(missing_ok=True)
-
-    return text, source
+    return text, ("human" if use_human else "auto")

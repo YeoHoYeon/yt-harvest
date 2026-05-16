@@ -111,7 +111,9 @@ def _run_inner(
         title = (item.get("title") or "")[:50]
         log(f"[{i}/{len(video_list)}] {vid}  {title}")
         try:
-            row = harvester.process_video(vid, run_root, log=log)
+            row = harvester.process_video(
+                vid, run_root, log=log, title=item.get("title"), index=i
+            )
             rows.append(row)
         except Exception as e:
             log(f"  ✗ 실패: {e}")

@@ -13,7 +13,7 @@ def fetch_video_meta(video_id: str) -> dict:
     url = f"https://www.youtube.com/watch?v={video_id}"
     try:
         with YoutubeDL(
-            {"quiet": True, "no_warnings": True, "skip_download": True, "noprogress": True, "logger": _SilentLogger()}
+            {"quiet": True, "no_warnings": True, "skip_download": True, "noprogress": True, "logger": _SilentLogger(), "extractor_args": {"youtube": {"lang": ["ko"]}}}
         ) as ydl:
             return ydl.extract_info(url, download=False) or {"_error": "empty"}
     except Exception as e:
@@ -65,6 +65,8 @@ def fetch_channel_meta(channel_url: str) -> dict:
                 "no_warnings": True,
                 "extract_flat": "in_playlist",
                 "playlistend": 1,
+                "logger": _SilentLogger(),
+                "extractor_args": {"youtube": {"lang": ["ko"]}},
             }
         ) as ydl:
             data = ydl.extract_info(channel_url, download=False) or {}
@@ -86,6 +88,8 @@ def list_videos(channel_url: str, limit: Optional[int] = None) -> list[dict]:
         "quiet": True,
         "no_warnings": True,
         "extract_flat": "in_playlist",
+        "logger": _SilentLogger(),
+        "extractor_args": {"youtube": {"lang": ["ko"]}},
     }
     if limit:
         opts["playlistend"] = limit
