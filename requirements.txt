@@ -1,0 +1,5 @@
+yt-dlp>=2026.3.17
+youtube-comment-downloader>=0.1.78
+ttkbootstrap>=1.10.1
+# Windows only
+winotify ; sys_platform == "win32"
