@@ -1,26 +1,24 @@
-"""yt-dlp --dump-json으로 영상/채널 메타 받기."""
+"""yt-dlp Python API로 영상/채널 메타 받기."""
 from __future__ import annotations
 
-import json
-import subprocess
 from typing import Optional
+
+from yt_dlp import YoutubeDL
 
 
 def fetch_video_meta(video_id: str) -> dict:
-    """영상 1개의 모든 메타. yt-dlp가 노출하는 모든 필드."""
+    """영상 1개의 모든 메타."""
     url = f"https://www.youtube.com/watch?v={video_id}"
-    cmd = ["yt-dlp", "--skip-download", "--dump-json", "--no-warnings", url]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    if r.returncode != 0:
-        return {"_error": r.stderr.strip()[:500]}
     try:
-        return json.loads(r.stdout)
-    except json.JSONDecodeError as e:
-        return {"_error": f"json parse: {e}"}
+        with YoutubeDL(
+            {"quiet": True, "no_warnings": True, "skip_download": True}
+        ) as ydl:
+            return ydl.extract_info(url, download=False) or {"_error": "empty"}
+    except Exception as e:
+        return {"_error": str(e)[:500]}
 
 
 def slim_video_meta(raw: dict) -> dict:
-    """meta.json에 저장할 깔끔한 dict."""
     if "_error" in raw:
         return raw
     return {
@@ -28,7 +26,7 @@ def slim_video_meta(raw: dict) -> dict:
             "id": raw.get("id"),
             "title": raw.get("title"),
             "url": raw.get("webpage_url"),
-            "upload_date": raw.get("upload_date"),  # YYYYMMDD
+            "upload_date": raw.get("upload_date"),
             "release_date": raw.get("release_date"),
             "duration_sec": raw.get("duration"),
             "view_count": raw.get("view_count"),
@@ -58,22 +56,18 @@ def slim_video_meta(raw: dict) -> dict:
 
 def fetch_channel_meta(channel_url: str) -> dict:
     """채널 자체 메타 (구독자, 채널 설명 등)."""
-    cmd = [
-        "yt-dlp",
-        "--skip-download",
-        "--playlist-items",
-        "0",
-        "--dump-single-json",
-        "--no-warnings",
-        channel_url,
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    if r.returncode != 0:
-        return {"_error": r.stderr.strip()[:500]}
     try:
-        data = json.loads(r.stdout)
-    except json.JSONDecodeError as e:
-        return {"_error": f"json parse: {e}"}
+        with YoutubeDL(
+            {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": "in_playlist",
+                "playlistend": 1,
+            }
+        ) as ydl:
+            data = ydl.extract_info(channel_url, download=False) or {}
+    except Exception as e:
+        return {"_error": str(e)[:500]}
     return {
         "id": data.get("channel_id") or data.get("id"),
         "name": data.get("channel") or data.get("uploader") or data.get("title"),
@@ -85,33 +79,31 @@ def fetch_channel_meta(channel_url: str) -> dict:
 
 
 def list_videos(channel_url: str, limit: Optional[int] = None) -> list[dict]:
-    """채널/플레이리스트의 영상 ID·제목·길이 리스트 (메타만)."""
-    cmd = [
-        "yt-dlp",
-        "--flat-playlist",
-        "--dump-json",
-        "--no-warnings",
-    ]
+    """채널/플레이리스트의 영상 ID·제목·길이 리스트."""
+    opts: dict = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": "in_playlist",
+    }
     if limit:
-        cmd += ["--playlist-items", f"1-{limit}"]
-    cmd.append(channel_url)
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    items: list[dict] = []
-    for line in r.stdout.splitlines():
-        line = line.strip()
-        if not line:
+        opts["playlistend"] = limit
+    try:
+        with YoutubeDL(opts) as ydl:
+            data = ydl.extract_info(channel_url, download=False) or {}
+    except Exception:
+        return []
+    entries = data.get("entries") or []
+    out: list[dict] = []
+    for e in entries:
+        if not e or not e.get("id"):
             continue
-        try:
-            d = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if d.get("id"):
-            items.append(
-                {
-                    "id": d.get("id"),
-                    "title": d.get("title"),
-                    "duration": d.get("duration"),
-                    "url": d.get("url") or f"https://www.youtube.com/watch?v={d['id']}",
-                }
-            )
-    return items
+        out.append(
+            {
+                "id": e["id"],
+                "title": e.get("title"),
+                "duration": e.get("duration"),
+                "url": e.get("url")
+                or f"https://www.youtube.com/watch?v={e['id']}",
+            }
+        )
+    return out
