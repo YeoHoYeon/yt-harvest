@@ -27,7 +27,7 @@ def _api(url: str) -> Optional[dict]:
         return None
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "yt-harvest"})
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # nosec B310  noqa: S310
             return json.loads(r.read().decode("utf-8"))
     except Exception:
         return None
@@ -88,7 +88,7 @@ def check_and_update(log: Callable[[str], None] = print) -> None:
         exe_dir = Path(sys.executable).parent
         new_path = exe_dir / "YtHarvest_new.exe"
         try:
-            urllib.request.urlretrieve(dl_url, new_path)  # noqa: S310
+            urllib.request.urlretrieve(dl_url, new_path)  # nosec B310  noqa: S310
         except Exception as e:
             log(f"⚠ 다운로드 실패: {e}")
             return
