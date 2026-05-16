@@ -83,13 +83,30 @@ class App:
         )
         self.stop_btn.pack(fill=X, ipady=4, pady=(0, 14))
 
-        # 진행률
-        self.pb = ttk.Progressbar(outer, mode="determinate", maximum=100, value=0)
-        self.pb.pack(fill=X, pady=(0, 4))
-        self.status_var = ttk.StringVar(value="대기")
-        ttk.Label(outer, textvariable=self.status_var, bootstyle="secondary").pack(
-            anchor="w"
+        # 진행률 (눈에 잘 띄는 success 색 + 두꺼운 바)
+        style = ttk.Style()
+        style.configure(
+            "Big.success.Horizontal.TProgressbar",
+            thickness=22,
+            troughcolor="#2b2b2b",
         )
+        self.pb = ttk.Progressbar(
+            outer,
+            mode="determinate",
+            maximum=100,
+            value=0,
+            bootstyle="success",
+            style="Big.success.Horizontal.TProgressbar",
+        )
+        self.pb.pack(fill=X, pady=(0, 6), ipady=2)
+
+        self.status_var = ttk.StringVar(value="대기")
+        ttk.Label(
+            outer,
+            textvariable=self.status_var,
+            font=("", 13, "bold"),
+            bootstyle="success",
+        ).pack(anchor="w")
 
         # 자세한 로그 (접기)
         self.toggle_btn = ttk.Button(
@@ -202,10 +219,15 @@ class App:
         if running:
             self.start_btn.configure(state=DISABLED)
             self.stop_btn.configure(state=NORMAL)
-            self.status_var.set("준비 중")
+            self.status_var.set("준비 중...")
+            # 영상 수 알아낼 때까지는 indeterminate (좌우 왔다갔다)
+            self.pb.configure(mode="indeterminate")
+            self.pb.start(15)
         else:
             self.start_btn.configure(state=NORMAL)
             self.stop_btn.configure(state=DISABLED)
+            self.pb.stop()
+            self.pb.configure(mode="determinate", value=100 if self._last_output_dir else 0)
             if self._last_output_dir:
                 self.status_var.set("✓  완료")
                 self._open_in_finder(self._last_output_dir)
@@ -214,6 +236,10 @@ class App:
 
     def _update_status(self) -> None:
         if self._total:
+            # indeterminate → determinate 전환
+            if str(self.pb.cget("mode")) == "indeterminate":
+                self.pb.stop()
+                self.pb.configure(mode="determinate")
             pct = int(self._done * 100 / self._total)
             self.pb.configure(value=pct)
 
